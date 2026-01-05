@@ -161,19 +161,26 @@ static void add_to_list(struct mblock *mblock)
  */
 void *xmalloc(const size_t size)
 {
-	if (size < MIN_ALLOCATION_SIZE) {
+	size_t alloc_size = size;
+	if (alloc_size + sizeof(struct mblock) <= SIZE_MAX) {
+		alloc_size += sizeof(struct mblock);
+	} else {
+		handle_error("alloc_size > SIZE_MAX", SEVERITY_FATAL);
+	}
+
+	if (alloc_size < MIN_ALLOCATION_SIZE) {
 		handle_error("allocation size is under MIN_ALLOCATION_SIZE",
 				SEVERITY_WARNING);
 		return NULL;
 	}
 
-	struct mblock *available_block = get_from_list(size);
+	struct mblock *available_block = get_from_list(alloc_size);
 	if (available_block) {
-		if (available_block->size_left > size) {
-			split_block(available_block, size);
+		if (available_block->size_left > alloc_size) {
+			split_block(available_block, alloc_size);
 			available_block = available_block->next;
 		}
-		occupy_block(available_block, size);
+		occupy_block(available_block, alloc_size);
 		add_to_list(available_block);
 		return (void *)(available_block + 1);
 	}
