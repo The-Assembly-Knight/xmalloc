@@ -1,0 +1,185 @@
+#include <stdbool.h>
+#include <stdint.h>
+#include <unistd.h>
+
+#include "../include/handle_error.h"
+#include "../include/xmalloc.h"
+
+#define MIN_ALLOCATION_SIZE 1
+#define MAX_ALLOCATION_SIZE INTPTR_MAX
+
+/* memory block structure
+ * 
+ * @mem free - true if block has not been occupied, otherwise false.
+ * @mem size - total size of the block (including alignment)
+ * @mem size_left - unused memory within the memory block
+ * @mem alignment - alignment used to allocate the memory after mblock struct
+ * @mem *next - next memory block in the linked list
+ *
+ */
+struct mblock {
+	bool free;
+	size_t size;
+	size_t size_left;
+	size_t alignment;
+	struct mblock *next;
+};
+
+/* head and tail of memory blocks linked list */
+static struct mblock *head = NULL;
+static struct mblock **tail = &head;
+
+/* Finds and returns a block of memory with equal or more memory left than
+ * @param size.
+ * 
+ * Description: goes through the linked list of memory blocks already allocated
+ * to find a block with enough available space for the size requested.
+ *
+ * Parameters:
+ * @param size - minimum size left required from a block.
+ *
+ * Returns: pointer to the block of memory with enough space left.
+ *
+ * Notes: if no block of memory with enough space is found then returns NULL.
+ *
+ */
+static struct mblock *get_from_list(const size_t size)
+{
+	struct mblock *current = head;
+	while (current) {
+		if (current->size >= size)
+			return current;
+		current = current->next;
+	}
+	return NULL;
+}
+
+/* Initializes @param mblock as a new block and sets its members based on
+ * the other parameters.
+ *
+ * Description: initializes mblock by setting all of its members taking into
+ * account @param size.
+ *
+ * Parameters:
+ * @param size - value to which @mem size must be initialized to.
+ *
+ * Returns: Nothing
+ *
+ * Notes: ** IMPORTANT **
+ * Some of the parameters have not been set correctly because there are other
+ * things yet to implement (things that are neccessary for those parameters),
+ * thus @mem size_left and @mem alignment and @mem next are intentionately
+ * wrong.
+ *
+ */
+static void occupy_block(struct mblock *mblock, const size_t size)
+{
+	mblock->free = false;
+	mblock->size = size;
+	mblock->size_left = 0;
+	mblock->alignment = 0;
+	mblock->next = NULL;
+}
+
+static void split_block(struct mblock *mblock, const size_t size)
+{
+	if (size > mblock->size_left) {
+		handle_error("size to split block is greater than the size_left\
+				of the block", SEVERITY_FATAL);
+	}
+}
+
+/* Allocates memory in the heap for a new memory block of size @param size
+ *
+ * Description: By using sbrk, it allocates memory in the heap based on
+ * @param size.
+ *
+ * Parameters:
+ * @param size - size of the allocation (without including the size of the
+ * mblock structure itself)
+ *
+ * Returns: A pointer to the mblock responsible for the memory allocated.
+ *
+ * Notes: In case the allocation can not be performed or an error ocurred while
+ * performing it, the function will alert the user through a warning and return
+ * a NULL pointer.
+ *
+ */
+static struct mblock *allocate_block(const size_t size)
+{
+	if (size > MAX_ALLOCATION_SIZE) {
+		handle_error("allocation size is over MAX_ALLOCATION_SIZE",
+				SEVERITY_WARNING);
+		return NULL;
+	}
+
+	void *new_block = sbrk((intptr_t)size);
+	if (new_block == (void *) - 1) {
+		handle_error("sbrk could not allocate memory for a new block",
+				SEVERITY_WARNING);
+		return NULL;
+	}
+	return (struct mblock *)new_block;
+}
+
+/* Adds a new memory block to the end of the list
+ *
+ * Description: Adds a new memory block node @param mblock to the end of the
+ * linked list
+ *
+ * Parameters:
+ * @param mblock - new memory block to be added to the end of the linked list.
+ *
+ * Returns: Nothing
+ *
+ * Notes: It is taking as granted that @param mblock is not NULL otherwise
+ * UB is likely to be the result of calling the function.
+ *
+ */
+static void add_to_list(struct mblock *mblock)
+{
+	if (!head)
+		head = mblock;
+	else
+		(*tail)->next = mblock;
+	tail = &(*tail)->next;
+}
+
+/* Allocates memory in heap and returns a pointer to the allocation.
+ *
+ * Description: allocates memory through sbrk based on @param size if there is
+ * no enough already-allocated memory in the lists.
+ *
+ * Parameters:
+ * @param size - size of the allocation
+ *
+ * Returns: pointer to memory allocated
+ *
+ * Notes: If the size of the allocation is greater than the maximum allocation
+ * size (INTPTR_MAX) or less than the minimum allocation size (1)
+ * 	
+ */
+void *xmalloc(const size_t size)
+{
+	if (size < MIN_ALLOCATION_SIZE) {
+		handle_error("allocation size is under MIN_ALLOCATION_SIZE",
+				SEVERITY_WARNING);
+		return NULL;
+	}
+
+	struct mblock *available_block = get_from_list(size);
+	if (available_block) {
+		if (available_block->size_left > size) {
+			split_block(available_block, size);
+			available_block = available_block->next;
+		}
+		occupy_block(available_block, size);
+		add_to_list(available_block);
+		return (void *)(available_block + 1);
+	}
+
+	struct mblock *new_block = allocate_block(size);
+	occupy_block(new_block, size);
+	add_to_list(new_block);
+	return (void *)(new_block + 1);
+}
