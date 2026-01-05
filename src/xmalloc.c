@@ -47,7 +47,7 @@ static struct mblock *get_from_list(const size_t size)
 {
 	struct mblock *current = head;
 	while (current) {
-		if (current->size >= size)
+		if (current->size_left >= size)
 			return current;
 		current = current->next;
 	}
@@ -138,11 +138,13 @@ static struct mblock *allocate_block(const size_t size)
  */
 static void add_to_list(struct mblock *mblock)
 {
-	if (!head)
+	if (!head) {
 		head = mblock;
-	else
+	}
+	else {
 		(*tail)->next = mblock;
-	tail = &(*tail)->next;
+		tail = &(*tail)->next;
+	}
 }
 
 /* Allocates memory in heap and returns a pointer to the allocation.
