@@ -1,6 +1,6 @@
 # Compiler and flags
 CC = gcc
-CFLAGS = -Wall -Wextra -Wpedantic -Wconversion -Werror
+CFLAGS = -Wall -Wextra -Wpedantic -Wconversion -Werror -g
 
 # Source and object files
 SRC = main.c \

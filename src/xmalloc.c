@@ -7,6 +7,7 @@
 
 #define MIN_ALLOCATION_SIZE 1
 #define MAX_ALLOCATION_SIZE INTPTR_MAX
+#define DEFAULT_ALIGNMENT 8
 
 /* memory block structure
  * 
@@ -147,6 +148,26 @@ static void add_to_list(struct mblock *mblock)
 	}
 }
 
+/* Gets the value of @param size if it were aligned to @param alignment.
+ *
+ * Parameters:
+ * @param size - original value of size
+ * @param alignment - alignment to be applied to size
+ *
+ * Returns: size after alignment being applied to it
+ *
+ */
+static size_t get_size_aligned(const size_t size, const size_t alignment)
+{
+	if (size % alignment == 0)
+		return size;
+
+	if (size <= alignment)
+		return alignment;
+
+	return (size + alignment - (size % alignment));
+}
+
 /* Allocates memory in heap and returns a pointer to the allocation.
  *
  * Description: allocates memory through sbrk based on @param size if there is
@@ -163,14 +184,18 @@ static void add_to_list(struct mblock *mblock)
  */
 void *xmalloc(const size_t size)
 {
-	size_t alloc_size = size;
+	const size_t size_aligned = get_size_aligned(size, DEFAULT_ALIGNMENT);
+	size_t alloc_size = size_aligned;
+
 	if (alloc_size + sizeof(struct mblock) <= SIZE_MAX) {
 		alloc_size += sizeof(struct mblock);
 	} else {
 		handle_error("alloc_size > SIZE_MAX", SEVERITY_FATAL);
 	}
 
-	if (alloc_size < MIN_ALLOCATION_SIZE) {
+	/* TODO: REPLACE THIS IF BECAUSE IT WILL ALWAYS BE FALSE (ALLOC_SIZE
+	 * IS ALWAYS AT LEAST 8)*/
+	if (alloc_size < MIN_ALLOCATION_SIZE) { 		
 		handle_error("allocation size is under MIN_ALLOCATION_SIZE",
 				SEVERITY_WARNING);
 		return NULL;
@@ -187,8 +212,8 @@ void *xmalloc(const size_t size)
 		return (void *)(available_block + 1);
 	}
 
-	struct mblock *new_block = allocate_block(size);
-	occupy_block(new_block, size);
+	struct mblock *new_block = allocate_block(alloc_size);
+	occupy_block(new_block, size_aligned);
 	add_to_list(new_block);
 	return (void *)(new_block + 1);
 }
