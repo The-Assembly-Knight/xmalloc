@@ -66,7 +66,7 @@ static struct mblock *get_from_list(const size_t size)
  *
  * Returns: Nothing
  *
- * Notes: ** IMPORTANT **
+ * Notes: ** IMPORTANT ** TODO
  * Some of the parameters have not been set correctly because there are other
  * things yet to implement (things that are neccessary for those parameters),
  * thus @mem size_left and @mem alignment and @mem next are intentionately
@@ -82,6 +82,7 @@ static void occupy_block(struct mblock *mblock, const size_t size)
 	mblock->next = NULL;
 }
 
+/* TODO Finish this function implementation*/
 static void split_block(struct mblock *mblock, const size_t size)
 {
 	if (size > mblock->size_left) {
@@ -208,6 +209,12 @@ static bool is_in_list(const struct mblock *block)
  */
 void *xmalloc(const size_t size)
 {
+	if (size < MIN_ALLOCATION_SIZE) { 		
+		handle_error("size passed to xmalloc is under MIN_ALLOCATION_SIZE",
+				SEVERITY_WARNING);
+		return NULL;
+	}
+
 	const size_t size_aligned = get_size_aligned(size, DEFAULT_ALIGNMENT);
 	size_t alloc_size = size_aligned;
 
@@ -215,14 +222,6 @@ void *xmalloc(const size_t size)
 		alloc_size += sizeof(struct mblock);
 	} else {
 		handle_error("alloc_size > SIZE_MAX", SEVERITY_FATAL);
-	}
-
-	/* TODO: REPLACE THIS IF BECAUSE IT WILL ALWAYS BE FALSE (ALLOC_SIZE
-	 * IS ALWAYS AT LEAST 8)*/
-	if (alloc_size < MIN_ALLOCATION_SIZE) { 		
-		handle_error("allocation size is under MIN_ALLOCATION_SIZE",
-				SEVERITY_WARNING);
-		return NULL;
 	}
 
 	struct mblock *available_block = get_from_list(alloc_size);
