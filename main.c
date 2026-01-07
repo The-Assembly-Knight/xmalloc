@@ -25,6 +25,9 @@ int main(void)
 		return 1;
 
 	nop();
+	xfree(my_char_ptr);
+	xfree(my_int_ptr);
+	nop();
 
 	return 0;
 }

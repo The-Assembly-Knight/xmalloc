@@ -137,13 +137,13 @@ static struct mblock *allocate_block(const size_t size)
  * UB is likely to be the result of calling the function.
  *
  */
-static void add_to_list(struct mblock *mblock)
+static void add_to_list(struct mblock *block)
 {
 	if (!head) {
-		head = mblock;
+		head = block;
 	}
 	else {
-		(*tail)->next = mblock;
+		(*tail)->next = block;
 		tail = &(*tail)->next;
 	}
 }
@@ -166,6 +166,30 @@ static size_t get_size_aligned(const size_t size, const size_t alignment)
 		return alignment;
 
 	return (size + alignment - (size % alignment));
+}
+
+/* Checks if @param block is part of blocks' linked list*
+ *
+ * Description: Checks if @param block point to a node of the blocks' linked
+ * list by checking if both addresses are the same.
+ *
+ * Parameters:
+ * @param block - pointer to block of memory that must be checked if it is
+ * part of the list
+ *
+ * Returns: true if the @param block pointer is part of the linked list,
+ * false otherwise
+ *
+ */
+static bool is_in_list(const struct mblock *block)
+{
+	struct mblock *current = head;
+	while (current) {
+		if (current == block)
+			return true;
+		current = current->next;
+	}
+	return false;
 }
 
 /* Allocates memory in heap and returns a pointer to the allocation.
@@ -216,4 +240,37 @@ void *xmalloc(const size_t size)
 	occupy_block(new_block, size_aligned);
 	add_to_list(new_block);
 	return (void *)(new_block + 1);
+}
+
+/* Frees an allocation made by xmalloc
+ *
+ * Description: Makes sure the @param ptr passed was memory allocated by xmalloc
+ * and frees that block of memory making it available for reuse.
+ *
+ * Parameters:
+ * @param ptr - pointer to the beginning of the memory managed by an mblock
+ * structure.
+ *
+ * Returns: Nothing
+ *
+ * Notes: This function makes sure that ptr is not NULL nor 
+ *
+ */
+void xfree(const void *ptr)
+{
+	if (!ptr) {
+		handle_error("ptr passed to xfree is NULL", SEVERITY_WARNING);
+		return;
+	}
+
+	struct mblock *adj_mblock = (struct mblock*)ptr - 1;
+
+	if (!is_in_list(adj_mblock)) {
+		handle_error("ptr passed to xfree was not allocated by xmalloc",
+				SEVERITY_WARNING);
+		return;
+	}
+
+	adj_mblock->free = true;
+	adj_mblock->size_left = adj_mblock->size;
 }
