@@ -100,7 +100,6 @@ static void init_block(struct mblock *mblock, const bool free, const size_t size
  * thus @mem size_left and @mem alignment and @mem next are intentionately
  * wrong.
  *
- *TODO: SUBSTITUTE BODY BY INIT_BLOCK FUNC WITH SOME SPECIFIC PARAMS
  */
 static void occupy_block(struct mblock *mblock, const size_t size,
 			const size_t size_occupied, struct mblock *next)
@@ -124,10 +123,7 @@ static void occupy_block(struct mblock *mblock, const size_t size,
  * TODO MAKE FUNCTION PARAMETER NAME EITHER MBLOCK OR BLOCK NOT BOTH FOR
  * CONSISTENCY
  *
- * TODO WHEN THE SPLIT IS FOR THE LAST BLOCK IN THE LIST (TAIL) THEN TAIL
- * POINTER WILL STILL POINT TO THE FIRST PART OF THE ORIGINAL MBLOCK SO THAT MUST BE
- * CHANGED
- * */
+ */
 
 static void split_block(struct mblock *mblock, const size_t size)
 {
@@ -139,9 +135,13 @@ static void split_block(struct mblock *mblock, const size_t size)
 	mblock->size = mblock->size - mblock->size_left;
 
 	struct mblock *new_block = (struct mblock *)((char *)mblock + sizeof(*mblock) + mblock->size);
+
 	init_block(new_block, true, mblock->size_left, mblock->size_left, 0, mblock->next);
 	mblock->next = new_block;
 	mblock->size_left = 0;
+
+	if (*tail == mblock)
+		tail = &mblock->next;
 }
 
 /* Allocates memory in the heap for a new memory block of size @param size

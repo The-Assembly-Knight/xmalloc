@@ -33,5 +33,13 @@ int main(void)
 
 	nop();
 
+	char *new_char_ptr = xmalloc(sizeof(char));
+
+	if (!new_char_ptr)
+		return 1;
+	
+	nop();
+
+
 	return 0;
 }
