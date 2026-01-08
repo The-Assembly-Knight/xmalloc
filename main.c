@@ -6,27 +6,31 @@ static int *get_int_ptr(void)
 	return int_ptr;
 }
 
-static char *get_char_ptr(void)
-{
-	char *char_ptr = xmalloc(sizeof(char));
-	return char_ptr;
-}
-
 static void nop(void)
 {
 }
-
+/* TEST IT, JOIN BLOKCS AFTER FREEING BIG BLOCKS SO SPLITTING AND REUSING CAN BE DONE 
+ * ALSO CHECK FOR TAIL POINTER IN SPLITTING
+ *
+ * OR PERHAPS WHEN A SIZE-X BLOCK IS BEING REQUESTED AND MAKE IT RECURSIVE FOR EVERY
+ * NEXT BLOCK THAT IS FREE.
+ */
 int main(void)
 {
-	char *my_char_ptr = get_char_ptr();
-	int *my_int_ptr = get_int_ptr();
+	int *my_big_ptr = xmalloc(100);
+	nop();
 
-	if (!my_char_ptr || !my_int_ptr)
+	if (!my_big_ptr)
 		return 1;
 
+	xfree(my_big_ptr);
 	nop();
-	xfree(my_char_ptr);
-	xfree(my_int_ptr);
+
+	int *my_new_ptr = get_int_ptr();
+	
+	if (!my_new_ptr)
+		return 1;
+
 	nop();
 
 	return 0;

@@ -55,6 +55,17 @@ static struct mblock *get_from_list(const size_t size)
 	return NULL;
 }
 
+static void init_block(struct mblock *mblock, const bool free, const size_t size,
+			const size_t size_left, const size_t alignment,
+			struct mblock *next)
+{
+	mblock->free = free;
+	mblock->size = size;
+	mblock->size_left = size_left;
+	mblock->alignment = alignment;
+	mblock->next = next;
+}
+
 /* Initializes @param mblock as a new block and sets its members based on
  * the other parameters.
  *
@@ -72,23 +83,49 @@ static struct mblock *get_from_list(const size_t size)
  * thus @mem size_left and @mem alignment and @mem next are intentionately
  * wrong.
  *
+ *TODO: SUBSTITUTE BODY BY INIT_BLOCK FUNC WITH SOME SPECIFIC PARAMS
  */
-static void occupy_block(struct mblock *mblock, const size_t size)
+static void occupy_block(struct mblock *mblock, const size_t size,
+			const size_t size_occupied, struct mblock *next)
 {
+
 	mblock->free = false;
 	mblock->size = size;
-	mblock->size_left = 0;
+	mblock->size_left = size - size_occupied;
 	mblock->alignment = 0;
-	mblock->next = NULL;
+	mblock->next = next;
 }
 
-/* TODO Finish this function implementation*/
+
+/* Splits a memory block into two (not necessarily equal to each other)
+ *
+ * Description: Divides size of @param mblock into two blocks: one just enough
+ * to allocate what was already allocated in @param mblock while the other one
+ * contains the rest of the space (including space for another mblock struct)
+ *
+ * Parameters:
+ * @param mblock - original block of memory that will be split into two
+ * @param size - space required by the new allocation from the second block
+ *
+ * Returns: Nothing
+ *
+ * TODO MAKE FUNCTION PARAMETER NAME EITHER MBLOCK OR BLOCK NOT BOTH FOR
+ * CONSISTENCY
+ * */
+
 static void split_block(struct mblock *mblock, const size_t size)
 {
 	if (size > mblock->size_left) {
 		handle_error("size to split block is greater than the size_left\
 				of the block", SEVERITY_FATAL);
 	}
+
+	mblock->size = mblock->size - mblock->size_left;
+
+	struct mblock *new_block = (struct mblock *)((char *)mblock + sizeof(*mblock) + mblock->size);
+	init_block(new_block, true, mblock->size_left, mblock->size_left, 0, mblock->next);
+	mblock->next = new_block;
+	mblock->size_left = 0;
 }
 
 /* Allocates memory in the heap for a new memory block of size @param size
@@ -224,19 +261,19 @@ void *xmalloc(const size_t size)
 		handle_error("alloc_size > SIZE_MAX", SEVERITY_FATAL);
 	}
 
-	struct mblock *available_block = get_from_list(alloc_size);
+	struct mblock *available_block = get_from_list(size_aligned);
 	if (available_block) {
-		if (available_block->size_left > alloc_size) {
+		if (!available_block->free && available_block->size_left > alloc_size) {
 			split_block(available_block, alloc_size);
 			available_block = available_block->next;
 		}
-		occupy_block(available_block, alloc_size);
-		add_to_list(available_block);
+		occupy_block(available_block, available_block->size,
+				size_aligned, available_block->next);
 		return (void *)(available_block + 1);
 	}
 
 	struct mblock *new_block = allocate_block(alloc_size);
-	occupy_block(new_block, size_aligned);
+	occupy_block(new_block, size_aligned, size_aligned, NULL);
 	add_to_list(new_block);
 	return (void *)(new_block + 1);
 }
