@@ -55,6 +55,23 @@ static struct mblock *get_from_list(const size_t size)
 	return NULL;
 }
 
+/* This function is meant to be a cleaner way of assigning a value to
+ * every member of an mblock.
+ *
+ * Description: Assign the values passed as arguments to the function to the
+ * corresponding member of the structure.
+ *
+ * Parameters:
+ * @param mblock - block to which the arguments will be assigned to.
+ * @param free - value for @mem free
+ * @param size - value for @mem size
+ * @param size_left - value for @mem size_left
+ * @param alignment - value for @mem alignment
+ * @param next - value for @mem next
+ *
+ * Returns: Nothing
+ */
+
 static void init_block(struct mblock *mblock, const bool free, const size_t size,
 			const size_t size_left, const size_t alignment,
 			struct mblock *next)
@@ -88,12 +105,7 @@ static void init_block(struct mblock *mblock, const bool free, const size_t size
 static void occupy_block(struct mblock *mblock, const size_t size,
 			const size_t size_occupied, struct mblock *next)
 {
-
-	mblock->free = false;
-	mblock->size = size;
-	mblock->size_left = size - size_occupied;
-	mblock->alignment = 0;
-	mblock->next = next;
+	init_block(mblock, false, size, size - size_occupied, 0, next);
 }
 
 
@@ -111,6 +123,10 @@ static void occupy_block(struct mblock *mblock, const size_t size,
  *
  * TODO MAKE FUNCTION PARAMETER NAME EITHER MBLOCK OR BLOCK NOT BOTH FOR
  * CONSISTENCY
+ *
+ * TODO WHEN THE SPLIT IS FOR THE LAST BLOCK IN THE LIST (TAIL) THEN TAIL
+ * POINTER WILL STILL POINT TO THE FIRST PART OF THE ORIGINAL MBLOCK SO THAT MUST BE
+ * CHANGED
  * */
 
 static void split_block(struct mblock *mblock, const size_t size)
